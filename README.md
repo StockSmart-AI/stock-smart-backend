@@ -51,9 +51,8 @@ pip install -r requirements.txt
 flask run
 ```
 
-The API will be available at: **[http://127.0.0.1:5000/](http://127.0.0.1:5000/)**
+The API will be available at: [http://127.0.0.1:5000/](http://127.0.0.1:5000/)
 ```
-
 
 # Contribution Guidelines
 
@@ -95,8 +94,8 @@ To ensure a smooth workflow for our mobile app project, please follow these conv
 
 Use a consistent commit message format to maintain a clear project history. We follow the **Conventional Commits** standard:
 
-- **Format:** <br>
-### type(scope): description
+- **Format:**  
+  `type(scope): description`
 
 - **Types:**
   - `feat:` — for new features

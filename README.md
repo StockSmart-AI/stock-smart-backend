@@ -1,4 +1,4 @@
-Here’s your content in Markdown format:  
+
 
 ```md
 # Stock-Smart Backend API

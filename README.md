@@ -1,6 +1,3 @@
-
-
-```md
 # Stock-Smart Backend API
 
 This is where we implement the backend Flask API logic for **Stock-Smart**.
@@ -52,7 +49,6 @@ flask run
 ```
 
 The API will be available at: [http://127.0.0.1:5000/](http://127.0.0.1:5000/)
-```
 
 # Contribution Guidelines
 

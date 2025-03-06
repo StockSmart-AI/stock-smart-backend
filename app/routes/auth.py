@@ -81,7 +81,7 @@ def send_otp():
         return jsonify({"message": "OTP sent successfully"}), 200
     else:
         return jsonify({"error": "Failed to send OTP"}), 500
-from flask_login import login_user
+
 
 @auth_bp.route("/verify-otp", methods=["POST"])
 def verify_otp():

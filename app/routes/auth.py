@@ -1,8 +1,8 @@
 from flask import Blueprint, request, jsonify
-from flask_login import login_user, logout_user, login_required, current_user
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from app.models import User
 from app.utils import generate_otp_secret, generate_otp_token, send_email  # Import utility functions
-import pyotp  # Import pyotp module
+import pyotp  
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -14,6 +14,7 @@ def signup():
     email = data.get('email')
     password = data.get('password')
     phone = data.get('phone')  
+    role = data.get('role', 'employee')
 
     if not name or not email or not password or not phone:
         missing_fields = []
@@ -32,7 +33,7 @@ def signup():
     if existing_user:
         return jsonify({"error": "User already exists"}), 400
 
-    new_user = User(None, name, email, password, phone) 
+    new_user = User(None, name, email, password, phone, role=role) 
     new_user.save_to_db()
 
     return jsonify({"message": "User created successfully"}), 201
@@ -48,14 +49,11 @@ def login():
         return jsonify({"error": "Missing required fields"}), 400
 
     user = User.get_by_email(email)
-    if user:
-        print(f"User found: {user.email}")  
-        if user.check_password(password):
-            login_user(user)
-            return jsonify({"message": "Login successful"}), 200
+    if user and user.check_password(password):
+        access_token = create_access_token(identity={"email": user.email, "role": user.role})
+        return jsonify(access_token=access_token, role=user.role), 200
+
     return jsonify({"error": "Invalid credentials"}), 401
-
-
 
 @auth_bp.route("send-otp", methods=["POST"])
 def send_otp():
@@ -69,11 +67,11 @@ def send_otp():
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    # Generate OTP
-    otp_code = pyotp.TOTP(pyotp.random_base32()).now()
-    user.set_otp(otp_code)  # Store OTP in database
 
-    # Send OTP via email
+    otp_code = pyotp.TOTP(pyotp.random_base32()).now()
+    user.set_otp(otp_code)  
+
+    
     subject = "Your OTP Code"
     body = f"Your OTP code is {otp_code}. It expires in 5 minutes."
 
@@ -81,7 +79,7 @@ def send_otp():
         return jsonify({"message": "OTP sent successfully"}), 200
     else:
         return jsonify({"error": "Failed to send OTP"}), 500
-from flask_login import login_user
+
 
 @auth_bp.route("/verify-otp", methods=["POST"])
 def verify_otp():
@@ -98,7 +96,7 @@ def verify_otp():
 
     is_valid, message = user.verify_otp(otp_code)
     if is_valid:
-        login_user(user)  # Log in user after OTP is verified
-        return jsonify({"message": "Login successful!"}), 200
+        access_token = create_access_token(identity={"email": user.email, "role": user.role})
+        return jsonify({"message": "Login successful!", "role": user.role, "access_token": access_token}), 200
 
     return jsonify({"error": message}), 400

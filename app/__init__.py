@@ -1,21 +1,21 @@
 from flask import Flask
 from dotenv import load_dotenv 
-from flask_login import LoginManager
 from app.routes.auth import auth_bp
+from app.routes.product import product_bp
 from app.db import db  
 import os
+from flask_jwt_extended import JWTManager
 
 load_dotenv()
-login_manager = LoginManager()
 
 def create_app():
     app = Flask(__name__)
 
-    # Load SECRET_KEY
     app.config["MONGO_URI"] = os.getenv("MONGO_URI")
-    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+    app.config["SECRET_KEY"] = os.getenv("secret_key")
+    app.config["JWT_SECRET_KEY"] = os.getenv("secret_key") 
 
-
+    jwt = JWTManager(app)
 
     if not app.config["SECRET_KEY"]:
         raise RuntimeError("SECRET_KEY is missing. Check your .env file!")
@@ -25,6 +25,6 @@ def create_app():
     except Exception as e:
         print(f"Error connecting to the database: {e}")
 
-    login_manager.init_app(app)
     app.register_blueprint(auth_bp, url_prefix='/auth')
+    app.register_blueprint(product_bp, url_prefix='/products')
     return app

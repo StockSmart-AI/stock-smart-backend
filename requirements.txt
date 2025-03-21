@@ -10,12 +10,7 @@ Flask-Login==0.6.3
 Flask-PyMongo==3.0.1
 gunicorn==23.0.0
 itsdangerous==2.2.0
-<<<<<<< HEAD
-
-Jinja2==3.1.6
-=======
 Jinja2==3.1.5
->>>>>>> 413213e (README update)
 MarkupSafe==3.0.2
 packaging==24.2
 PyJWT==2.10.1

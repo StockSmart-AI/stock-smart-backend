@@ -51,7 +51,7 @@ def login():
     user = User.get_by_email(email)
     if user and user.check_password(password):
         access_token = create_access_token(identity={"email": user.email, "role": user.role})
-        return jsonify(access_token=access_token, role=user.role), 200
+        return jsonify(access_token=access_token, role=user.role, user_id=user.id), 200
 
     return jsonify({"error": "Invalid credentials"}), 401
 
@@ -67,11 +67,9 @@ def send_otp():
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-
     otp_code = pyotp.TOTP(pyotp.random_base32()).now()
     user.set_otp(otp_code)  
 
-    
     subject = "Your OTP Code"
     body = f"Your OTP code is {otp_code}. It expires in 5 minutes."
 
@@ -79,7 +77,6 @@ def send_otp():
         return jsonify({"message": "OTP sent successfully"}), 200
     else:
         return jsonify({"error": "Failed to send OTP"}), 500
-
 
 @auth_bp.route("/verify-otp", methods=["POST"])
 def verify_otp():

@@ -7,7 +7,7 @@ import time
 
 
 class User(UserMixin):
-    def __init__(self, id=None, name=None, email=None, password=None, phone=None, password_hash=None, otp=None, otp_expiry=None, role="employee"):
+    def __init__(self, id=None, name=None, email=None, password=None, phone=None, password_hash=None, otp=None, otp_expiry=None, role="owner"):
         self.id = str(id) if id else None 
         self.name = name
         self.email = email

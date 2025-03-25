@@ -5,6 +5,7 @@ from app.routes.product import product_bp
 from app.db import db  
 import os
 from flask_jwt_extended import JWTManager
+from datetime import timedelta
 
 load_dotenv()
 
@@ -13,7 +14,8 @@ def create_app():
 
     app.config["MONGO_URI"] = os.getenv("MONGO_URI")
     app.config["SECRET_KEY"] = os.getenv("secret_key")
-    app.config["JWT_SECRET_KEY"] = os.getenv("secret_key") 
+    app.config["JWT_SECRET_KEY"] = os.getenv("secret_key")  # Ensure JWT_SECRET_KEY is set correctly
+    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
 
     jwt = JWTManager(app)
 

@@ -2,11 +2,15 @@ from flask import Blueprint, request, jsonify
 from app.models import Product
 from bson import ObjectId
 from app.db import db
+from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import jwt_required
+
 product_bp = Blueprint('products', __name__)
 
 
 
 @product_bp.route('/', methods=['GET'])
+@jwt_required()
 def get_all_products():
     products = list(db.products.find())
     product_list = []
@@ -29,6 +33,7 @@ def get_all_products():
 
 
 @product_bp.route('/<product_id>', methods=['GET'])
+@jwt_required()
 def get_product_by_id(product_id):
     if not ObjectId.is_valid(product_id):
         return jsonify({"error": "Invalid product ID"}), 400
@@ -53,6 +58,7 @@ def get_product_by_id(product_id):
 
 # Get a product by barcode
 @product_bp.route('/barcode/<barcode>', methods=['GET'])
+@jwt_required()
 def get_product_by_barcode(barcode):
     product = db.products.find_one({"barcode": barcode})
 
@@ -73,6 +79,7 @@ def get_product_by_barcode(barcode):
 
 
 @product_bp.route('/add', methods=['POST'])
+@jwt_required()
 def add_product():
     data = request.get_json()
     name = data.get('name')
@@ -93,6 +100,7 @@ def add_product():
     return jsonify({"message": "Product added successfully", "product_id": new_product.id}), 201
 
 @product_bp.route('/update/<product_id>', methods=['PUT'])
+@jwt_required()
 def update_product(product_id):
     data = request.get_json()
     product = Product.get_by_id(product_id)
@@ -113,6 +121,7 @@ def update_product(product_id):
     return jsonify({"message": "Product updated successfully"})
 
 @product_bp.route('/delete/<product_id>', methods=['DELETE'])
+@jwt_required()
 def delete_product(product_id):
     product = Product.get_by_id(product_id)
     if not product:
@@ -123,6 +132,7 @@ def delete_product(product_id):
     return jsonify({"message": "Product deleted successfully"})
 
 @product_bp.route('/scan-barcode', methods=['POST'])
+@jwt_required()
 def scan_barcode():
     data = request.get_json()
     barcode = data.get('barcode')

@@ -15,7 +15,8 @@ def create_app():
     app.config["MONGO_URI"] = os.getenv("MONGO_URI")
     app.config["SECRET_KEY"] = os.getenv("secret_key")
     app.config["JWT_SECRET_KEY"] = os.getenv("secret_key")  # Ensure JWT_SECRET_KEY is set correctly
-    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
+    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=8)
+    app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=30)
 
     jwt = JWTManager(app)
 

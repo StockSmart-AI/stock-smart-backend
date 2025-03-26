@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from app.models import User
 from app.utils import generate_otp_secret, generate_otp_token, send_email  # Import utility functions
 import pyotp  
@@ -50,10 +50,18 @@ def login():
 
     user = User.get_by_email(email)
     if user and user.check_password(password):
-        access_token = create_access_token(identity={"email": user.email, "role": user.role})
-        return jsonify(access_token=access_token, role=user.role, user_id=user.id), 200
+        access_token = create_access_token(identity=user.email)
+        refresh_token = create_refresh_token(identity=user.email)
+        return jsonify(access_token=access_token, refresh_token=refresh_token, role=user.role, user_id=user.id), 200
 
     return jsonify({"error": "Invalid credentials"}), 401
+
+@auth_bp.route('/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+    identity = get_jwt_identity()
+    new_token = create_access_token(identity=identity)
+    return jsonify(access_token=new_token), 200
 
 @auth_bp.route("send-otp", methods=["POST"])
 def send_otp():
@@ -93,7 +101,7 @@ def verify_otp():
 
     is_valid, message = user.verify_otp(otp_code)
     if is_valid:
-        access_token = create_access_token(identity={"email": user.email, "role": user.role})
+        access_token = create_access_token(identity=user.email)
         return jsonify({"message": "Login successful!", "role": user.role, "access_token": access_token}), 200
 
     return jsonify({"error": message}), 400

@@ -1,6 +1,11 @@
-from pymongo import MongoClient
+# from pymongo import MongoClient
 import os
+import mongoengine as me
+from dotenv import load_dotenv
 
-mongo_client = MongoClient(os.getenv("MONGO_URI"), tls=True, tlsAllowInvalidCertificates=True)
-db_name = os.getenv("mongodb_database_name")  # Get the database name from the environment variables
-db = mongo_client[db_name]
+load_dotenv()
+
+me.connect(
+    db=os.getenv("mongodb_database_name"),
+    host=os.getenv("MONGO_URI")
+    )

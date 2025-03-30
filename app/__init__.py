@@ -1,8 +1,10 @@
 from flask import Flask
 from dotenv import load_dotenv 
 from app.routes.auth import auth_bp
-from app.routes.product import product_bp
-from app.db import db  
+from app.routes.user import user_bp
+from app.routes.shop import shop_bp
+# from app.routes.product import product_bp
+from app.db import me
 import os
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
@@ -29,5 +31,7 @@ def create_app():
         print(f"Error connecting to the database: {e}")
 
     app.register_blueprint(auth_bp, url_prefix='/auth')
-    app.register_blueprint(product_bp, url_prefix='/products')
+    app.register_blueprint(user_bp)
+    app.register_blueprint(shop_bp)
+    # app.register_blueprint(product_bp, url_prefix='/products')
     return app

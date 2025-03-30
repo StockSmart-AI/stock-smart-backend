@@ -1,8 +1,10 @@
 from flask import Flask
 from dotenv import load_dotenv 
 from app.routes.auth import auth_bp
-from app.routes.product import product_bp
-from app.db import db  
+from app.routes.user import user_bp
+from app.routes.shop import shop_bp
+# from app.routes.product import product_bp
+from app.db import me
 import os
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
@@ -15,7 +17,8 @@ def create_app():
     app.config["MONGO_URI"] = os.getenv("MONGO_URI")
     app.config["SECRET_KEY"] = os.getenv("secret_key")
     app.config["JWT_SECRET_KEY"] = os.getenv("secret_key")  # Ensure JWT_SECRET_KEY is set correctly
-    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
+    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=8)
+    app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=30)
 
     jwt = JWTManager(app)
 
@@ -28,5 +31,7 @@ def create_app():
         print(f"Error connecting to the database: {e}")
 
     app.register_blueprint(auth_bp, url_prefix='/auth')
-    app.register_blueprint(product_bp, url_prefix='/products')
+    app.register_blueprint(user_bp)
+    app.register_blueprint(shop_bp)
+    # app.register_blueprint(product_bp, url_prefix='/products')
     return app

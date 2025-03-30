@@ -1,5 +1,6 @@
 from werkzeug.security import generate_password_hash, check_password_hash
 import mongoengine as me
+from datetime import datetime
 import time
 
 """
@@ -83,7 +84,6 @@ class Shop(BaseModel):
     def get_by_owner_id(cls, owner_id):
         return cls.objects(owner=owner_id)
     
-        
 
 """
 Product Model
@@ -99,3 +99,46 @@ class Product(BaseModel):
     category = me.StringField(defaults="")
 
     meta = {'collection': 'products'}
+
+
+class Item(BaseModel):
+    product = me.ReferenceField(Product, required=True, reverse_delete_rule=me.CASCADE)
+    barcode = me.StringField()
+
+    meta = {'collection': 'items'}
+
+    def save(self, *args, **kwargs):
+        if self.product:
+            Product.objects(id=self.product.id).update_one(inc__quantity=1)
+
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.product:
+            Product.objects(id=self.product.id).update_one(dec__quantity=1) 
+
+        super().delete(*args, **kwargs)
+
+    @classmethod
+    def get_by_barcode(cls, barcode):
+        return cls.objects(barcode=barcode)
+
+
+class Transaction(BaseModel):
+    date = me.DateTimeField(default=datetime.utcnow)
+    shop = me.ReferenceField(Shop, required=True)
+    user = me.ReferenceField(User, required=True)
+    transaction_type = me.StringField(choices=["sale", "restock"], required=True)
+    products = me.DictField(required=True)
+    total = me.FloatField(required=True)
+
+    def save(self, *args, **kwargs):
+        self.total = sum(
+            product.price * quantity
+            for productId, quantity in self.products.items()
+            for product in Product.objects(id=productId)
+        )
+
+        super().save(*args, **kwargs)
+
+    meta = {'collection': 'transactions'}

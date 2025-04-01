@@ -156,18 +156,19 @@ def add_item():
     if not product_id:
         return jsonify({"error": "Missing product_id"}), 400
 
-    # Validate product_id as a valid ObjectId
+
     if not ObjectId.is_valid(product_id):
         return jsonify({"error": "Invalid product_id"}), 400
 
-    # Fetch the product to ensure it exists
+
     product = Product.get_product_by_id(product_id)
     if not product:
         return jsonify({"error": "Product not found"}), 404
 
-    # Create the item
+   
+    product.save()
     item = Item(
-        product=product,  # Use the product object
+        product=product,  
         barcode=barcode
     )
     item.save()
@@ -186,3 +187,39 @@ def add_item():
         "description": item.product.description,
         "category": item.product.category
     }), 201
+
+@product_bp.route('/delete-item/<item_id>', methods=['DELETE'])
+@jwt_required()
+def delete_item(item_id):
+    item = Item.objects(id=item_id).first()
+    if not item:
+        return jsonify({"error": "Item not found"}), 404
+
+    item.delete()
+
+    return jsonify({"message": "Item deleted successfully"}), 200
+@product_bp.route('/get-items/<product_id>', methods=['GET'])
+@jwt_required()
+def get_items_by_product_id(product_id):
+    items = Item.objects(product=product_id)
+    if not items:
+        return jsonify({"error": "No items found for this product"}), 404
+
+    item_list = [
+        {
+            "id": str(item.id),
+            "barcode": item.barcode,
+            "product_id": str(item.product.id),
+            "product_name": item.product.name,
+            "shop_id": str(item.product.shop.id),
+            "shop_name": item.product.shop.name,
+            "price": item.product.price,
+            "quantity": item.product.quantity,
+            "threshold": item.product.threshold,
+            "description": item.product.description,
+            "category": item.product.category
+        }
+        for item in items
+    ]
+
+    return jsonify(item_list), 200

@@ -105,7 +105,7 @@ class Product(BaseModel):
 
 class Item(BaseModel):
     product = me.ReferenceField(Product, required=True, reverse_delete_rule=me.CASCADE)
-    barcode = me.StringField()
+    barcode = me.StringField(unique=True)
     meta = {'collection': 'items'}
     def save(self, *args, **kwargs):
         if self.product:

@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from app.models import User
-from app.utils import generate_otp_secret, generate_otp_token, send_email  # Import utility functions
+from app.utils import generate_otp_secret, generate_otp_token, send_email 
 import pyotp  
 
 auth_bp = Blueprint('auth', __name__)
@@ -107,6 +107,6 @@ def verify_otp():
     if is_valid:
         access_token = create_access_token(identity=user.email)
         refresh_token = create_refresh_token(identity=user.email)
-        return jsonify(access_token=access_token, refresh_token=refresh_token, role=user.role, user_id=str(user.id)), 200
+        return jsonify(access_token=access_token, refresh_token=refresh_token, email=email, user_id=str(user.id)), 200
 
     return jsonify({"error": message}), 400

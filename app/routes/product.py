@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify
 from app.models import Product, Item
 from flask_jwt_extended import jwt_required
 from bson import ObjectId
+import cloudinary
+from app import utils  
 
 product_bp = Blueprint('products', __name__)
 
@@ -65,7 +67,17 @@ def get_product_by_barcode(barcode):
 @product_bp.route('/add', methods=['POST'])
 @jwt_required()
 def add_product():
-    data = request.get_json()
+    data = request.form
+    image_file = request.files.get('image')
+    if not image_file:
+        return jsonify({"error": "Image file is required"}), 400
+
+    
+    try:
+        image_url = utils.upload_image_to_cloudinary(image_file)
+    except cloudinary.exceptions.Error as e:
+        return jsonify({"error": "Image upload failed", "details": str(e)}), 500
+  
     name = data.get('name')
     shop_id = data.get('shop_id')
     price = data.get('price')
@@ -74,6 +86,7 @@ def add_product():
     description = data.get('description', "")
     category = data.get('category', "")
     is_serialized = data.get('isSerialized', False)
+    image_url = image_url if image_url else ""
 
     if not name or not shop_id or not price or not quantity:
         return jsonify({"error": "Missing required fields"}), 400
@@ -86,7 +99,8 @@ def add_product():
         threshold=threshold,
         description=description,
         category=category,
-        isSerialized=is_serialized
+        isSerialized=is_serialized,
+        image_url=image_url
     )
     product.save()
 

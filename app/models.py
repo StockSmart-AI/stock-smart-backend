@@ -97,6 +97,7 @@ class Product(BaseModel):
     isSerialized = me.BooleanField(required=True)
     description = me.StringField(defaults="")
     category = me.StringField(defaults="")
+    image_url = me.StringField(default="")
 
     meta = {'collection': 'products'}
     @classmethod

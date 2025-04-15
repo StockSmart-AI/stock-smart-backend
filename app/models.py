@@ -97,16 +97,17 @@ class Product(BaseModel):
     isSerialized = me.BooleanField(required=True)
     description = me.StringField(defaults="")
     category = me.StringField(defaults="")
+    image_url = me.StringField(default="")
 
     meta = {'collection': 'products'}
-
+    @classmethod
+    def get_product_by_id(cls, id):
+        return cls.objects(id=id).first()
 
 class Item(BaseModel):
     product = me.ReferenceField(Product, required=True, reverse_delete_rule=me.CASCADE)
-    barcode = me.StringField()
-
+    barcode = me.StringField(unique=True)
     meta = {'collection': 'items'}
-
     def save(self, *args, **kwargs):
         if self.product:
             Product.objects(id=self.product.id).update_one(inc__quantity=1)

@@ -3,6 +3,12 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+import cloudinary.uploader
+
+def upload_image_to_cloudinary(image_file):
+    result = cloudinary.uploader.upload(image_file)
+    return result["secure_url"]  # or result["url"] if you want non-secure
+
 def generate_otp_secret():
     
     return pyotp.random_base32()

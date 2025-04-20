@@ -54,11 +54,18 @@ class User(BaseModel):
         data.pop('otp', None)
         data.pop('otp_expiry', None)
         if data['role'] == "owner":
-            data['shops'] = [str(shop.id) for shop in self.shops]
-            data.pop('shop')
+            try:
+                data['shops'] = [str(shop.id) for shop in self.shops]
+                data.pop('shop')
+            except KeyError:
+                pass
         else:
-            data['shop'] = str(self.shop.id) if self.shop else None
-            data.pop('shops')
+            try:
+                data['shop'] = str(self.shop.id) if self.shop else None
+                data.pop('shops')
+            except KeyError:
+                pass
+            
         return data
     
     def check_password(self, password):

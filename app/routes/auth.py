@@ -34,7 +34,7 @@ def signup():
     new_user = User(name=name, email=email, password=password, role=role) 
     new_user.save()
 
-    return jsonify({"message": "User created successfully"}, user=new_user.get_serialized()), 201
+    return jsonify(user=new_user.get_serialized()), 201
 
 
 @auth_bp.route('login', methods=['POST'])

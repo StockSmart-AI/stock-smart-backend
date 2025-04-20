@@ -13,10 +13,9 @@ def signup():
     name = data.get('name')
     email = data.get('email')
     password = data.get('password')
-    phone = data.get('phone')  
     role = data.get('role', 'employee')
 
-    if not name or not email or not password or not phone:
+    if not name or not email or not password:
         missing_fields = []
         if not name:
             missing_fields.append("name")
@@ -24,8 +23,7 @@ def signup():
             missing_fields.append("email")
         if not password:
             missing_fields.append("password")
-        if not phone:
-            missing_fields.append("phone")
+
         print(f"Missing fields: {missing_fields}")  
         return jsonify({"error": "Missing required fields", "missing_fields": missing_fields}), 400
 
@@ -33,7 +31,7 @@ def signup():
     if existing_user:
         return jsonify({"error": "User already exists"}), 400
 
-    new_user = User(name=name, email=email, password=password, phone=phone, role=role) 
+    new_user = User(name=name, email=email, password=password, role=role) 
     new_user.save()
 
     return jsonify({"message": "User created successfully"}), 201
@@ -44,7 +42,6 @@ def login():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
-    print(f"Received data: {data}")  
 
     if not email or not password:
         return jsonify({"error": "Missing required fields"}), 400
@@ -53,7 +50,7 @@ def login():
     if user and user.check_password(password):
         access_token = create_access_token(identity=user.email)
         refresh_token = create_refresh_token(identity=user.email)
-        return jsonify(access_token=access_token, refresh_token=refresh_token, role=user.role, user_id=str(user.id)), 200
+        return jsonify(access_token=access_token, refresh_token=refresh_token, user=user.get_serialized()), 200
 
     return jsonify({"error": "Invalid credentials"}), 401
 
@@ -107,6 +104,6 @@ def verify_otp():
     if is_valid:
         access_token = create_access_token(identity=user.email)
         refresh_token = create_refresh_token(identity=user.email)
-        return jsonify(access_token=access_token, refresh_token=refresh_token, email=email, user_id=str(user.id)), 200
+        return jsonify(access_token=access_token, refresh_token=refresh_token, user=user.get_serialized()), 200
 
     return jsonify({"error": message}), 400

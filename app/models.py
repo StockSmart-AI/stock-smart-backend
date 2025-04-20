@@ -9,6 +9,11 @@ Base Model
 class BaseModel(me.Document):
     meta = {'abstract': True}
 
+    def get_serialized(self):
+        data = self.to_mongo().to_dict()
+        data['id'] = str(data.pop('_id'))
+        return data
+
     @classmethod
     def get_by_id(cls, id):
         return cls.objects(id=id).first()
@@ -29,7 +34,9 @@ class User(BaseModel):
     otp = me.StringField()
     otp_expiry = me.FloatField()
     role = me.StringField()
-    shop = me.ReferenceField('Shop')
+    shop = me.ReferenceField('Shop') #for employees
+    shops = me.ListField(me.ReferenceField('Shop')) #for owners
+    isVerified = me.BooleanField(required=True, default=False)
     
     meta = {'collection': 'users'}
 
@@ -40,6 +47,20 @@ class User(BaseModel):
         super().__init__(*args, **kwargs)
 
 
+    def get_serialized(self):
+        data = self.to_mongo().to_dict()
+        data["id"] = str(data.pop("_id"))
+        data.pop('password_hash')
+        data.pop('otp', None)
+        data.pop('otp_expiry', None)
+        if data['role'] == "owner":
+            data['shops'] = [str(shop.id) for shop in self.shops]
+            data.pop('shop')
+        else:
+            data['shop'] = str(self.shop.id) if self.shop else None
+            data.pop('shops')
+        return data
+    
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
@@ -60,11 +81,13 @@ class User(BaseModel):
             if time.time() > self.otp_expiry:
                 return False, "OTP expired"
             if self.otp == otp_code:
+                self.isVerified = True
+                self.save()
                 return True, "OTP verified"
         return False, "Invalid OTP"
     
     @classmethod
-    def get_by_shop_id(cls, shop_id):
+    def get_employees_by_shop_id(cls, shop_id):
         return cls.objects(shop=shop_id)
     
 
@@ -108,6 +131,7 @@ class Item(BaseModel):
     product = me.ReferenceField(Product, required=True, reverse_delete_rule=me.CASCADE)
     barcode = me.StringField(unique=True)
     meta = {'collection': 'items'}
+
     def save(self, *args, **kwargs):
         if self.product:
             Product.objects(id=self.product.id).update_one(inc__quantity=1)

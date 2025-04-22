@@ -7,6 +7,8 @@ from app import utils
 
 product_bp = Blueprint('products', __name__)
 
+
+#Get all products routes
 @product_bp.route('/', methods=['GET'])
 @jwt_required()
 def get_all_products():
@@ -26,6 +28,9 @@ def get_all_products():
     ]
     return jsonify(product_list), 200
 
+
+
+#Get product by ID route
 @product_bp.route('/<product_id>', methods=['GET'])
 @jwt_required()
 def get_product_by_id(product_id):
@@ -44,6 +49,9 @@ def get_product_by_id(product_id):
         "category": product.category,
     }), 200
 
+
+
+#Get all product by barcode route
 @product_bp.route('/barcode/<barcode>', methods=['GET'])
 @jwt_required()
 def get_product_by_barcode(barcode):
@@ -64,6 +72,8 @@ def get_product_by_barcode(barcode):
         "barcode": item.barcode,
     }), 200
 
+
+# Add a product route
 @product_bp.route('/add', methods=['POST'])
 @jwt_required()
 def add_product():
@@ -79,9 +89,9 @@ def add_product():
         return jsonify({"error": "Image upload failed", "details": str(e)}), 500
   
     name = data.get('name')
-    shop_id = data.get('shop_id')
     price = data.get('price')
-    quantity = data.get('quantity')
+    shop_id = data.get('shop_id')
+    quantity = 0
     threshold = data.get('threshold', 0)
     description = data.get('description', "")
     category = data.get('category', "")
@@ -106,6 +116,9 @@ def add_product():
 
     return jsonify({"message": "Product added successfully", "product_id": str(product.id)}), 201
 
+
+
+#Update product route
 @product_bp.route('/update/<product_id>', methods=['PUT'])
 @jwt_required()
 def update_product(product_id):
@@ -124,6 +137,9 @@ def update_product(product_id):
 
     return jsonify({"message": "Product updated successfully"}), 200
 
+
+
+#Delete product route
 @product_bp.route('/delete/<product_id>', methods=['DELETE'])
 @jwt_required()
 def delete_product(product_id):
@@ -134,14 +150,12 @@ def delete_product(product_id):
     product.delete()
     return jsonify({"message": "Product deleted successfully"}), 200
 
-@product_bp.route('/scan-barcode', methods=['POST'])
-@jwt_required()
-def scan_barcode():
-    data = request.get_json()
-    barcode = data.get('barcode')
 
-    if not barcode:
-        return jsonify({"error": "Missing barcode field"}), 400
+
+#Get by barcode
+@product_bp.route('/barcode/<barcode>', methods=['GET'])
+@jwt_required()
+def scan_barcode(barcode):
 
     item = Item.get_by_barcode(barcode)
     if not item:
@@ -160,32 +174,29 @@ def scan_barcode():
         "barcode": item.barcode,
     }), 200
 
-@product_bp.route('/add-item', methods=['POST'])
+
+
+#Add Item route
+@product_bp.route('/restock', methods=['POST'])
 @jwt_required()
-def add_item():
+def restock():
     data = request.get_json()
-    product_id = data.get('product_id')
-    barcode = data.get('barcode')
+    products = []
+    items = []
 
-    if not product_id:
-        return jsonify({"error": "Missing product_id"}), 400
+    for product_id, payload in data:
+        product = Product.get_product_by_id(product_id)
+        if not product:
+            return jsonify({"error": "Product not found"}), 404
 
+        if product.isSerialized:
+            for i in range(payload.quantity):
+                item = Item(product=product, barcode=payload.barcode[i])
+                item.save()
+        else:
+            product.quantity += payload.quantity
+            product.save()
 
-    if not ObjectId.is_valid(product_id):
-        return jsonify({"error": "Invalid product_id"}), 400
-
-
-    product = Product.get_product_by_id(product_id)
-    if not product:
-        return jsonify({"error": "Product not found"}), 404
-
-   
-    product.save()
-    item = Item(
-        product=product,  
-        barcode=barcode
-    )
-    item.save()
 
     return jsonify({
         "message": "Item added successfully",
@@ -201,6 +212,7 @@ def add_item():
         "description": item.product.description,
         "category": item.product.category
     }), 201
+
 
 @product_bp.route('/delete-item/<item_id>', methods=['DELETE'])
 @jwt_required()

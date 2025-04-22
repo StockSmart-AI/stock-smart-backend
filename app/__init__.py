@@ -23,14 +23,14 @@ def create_app():
      # Configuration       
     cloudinary.config( 
         cloud_name = "dmbuhyrta", 
-        api_key = "361494786516456", 
-        api_secret = "rLGreojexTBAMwaulg22yjCw-24", # Click 'View API Keys' above to copy your API secret
+        api_key = os.getenv("cloudinary_api_key"), 
+        api_secret = os.getenv("cloudinary_secret_key"),
         secure=True
     )
 
     app.config["MONGO_URI"] = os.getenv("MONGO_URI")
     app.config["SECRET_KEY"] = os.getenv("secret_key")
-    app.config["JWT_SECRET_KEY"] = os.getenv("secret_key")  # Ensure JWT_SECRET_KEY is set correctly
+    app.config["JWT_SECRET_KEY"] = os.getenv("secret_key") 
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=8)
     app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=30)
 

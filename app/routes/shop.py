@@ -18,13 +18,15 @@ def create_shop():
     owner = User.get_by_email(email)
 
 
-    shops = Shop.get_by_owner_id(owner.id)
+    shops = owner.shops
     for shop in shops:
         if shop.name == shop_name:
             return jsonify({"error": "Name is already in use"}), 400
 
     new_shop = Shop(name=shop_name, address=address, owner=owner)
     new_shop.save()
+    owner.shops.append(new_shop)
+    owner.save()
     return jsonify({"message": "Shop created successfully"}), 201
 
 

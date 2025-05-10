@@ -71,7 +71,6 @@ def add_product():
     image_file = request.files.get('image')
     if not image_file:
         return jsonify({"error": "Image file is required"}), 400
-
     
     try:
         image_url = utils.upload_image_to_cloudinary(image_file)

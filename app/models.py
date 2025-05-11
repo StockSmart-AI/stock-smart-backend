@@ -29,12 +29,13 @@ User Model
 class User(BaseModel):
     name = me.StringField(required=True)
     email = me.EmailField(required=True, unique=True)
+    phone = me.StringField(unique=True)  
     password_hash = me.StringField(required=True)
     otp = me.StringField()
     otp_expiry = me.FloatField()
     role = me.StringField()
-    shop = me.ReferenceField('Shop') #for employees
-    shops = me.ListField(me.ReferenceField('Shop')) #for owners
+    shop = me.ReferenceField('Shop') 
+    shops = me.ListField(me.ReferenceField('Shop')) 
     isVerified = me.BooleanField(required=True, default=False)
     
     meta = {'collection': 'users'}
@@ -173,3 +174,21 @@ class Transaction(BaseModel):
         super().save(*args, **kwargs)
 
     meta = {'collection': 'transactions'}
+
+
+class Invitation(me.Document):
+    token = me.StringField(required=True, unique=True)
+    shop_id = me.ReferenceField('Shop', required=True, reverse_delete_rule=me.CASCADE)
+    email = me.EmailField(required=True)
+
+    meta = {'collection': 'invitations'}
+
+    @staticmethod
+    def get_by_token(token):
+        return Invitation.objects(token=token).first()
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)

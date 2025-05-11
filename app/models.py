@@ -192,3 +192,7 @@ class Invitation(me.Document):
 
     def delete(self, *args, **kwargs):
         super().delete(*args, **kwargs)
+
+    def generate_invitation_link(self):
+        """Generate the invitation link using the backend URL."""
+        return f"https://stock-smart-backend-ny1z.onrender.com/users/join?token={self.token}"

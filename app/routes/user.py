@@ -56,7 +56,7 @@ def invite_employee():
 
     # Generate a unique token for the invitation
     invitation_token = str(uuid.uuid4())
-    invitation_link = f"http://<your-server-domain>/users/join?token={invitation_token}"
+    invitation_link = f"https://stock-smart-backend-ny1z.onrender.com/users/join?token={invitation_token}"
 
     # Save the invitation to the database
     new_invitation = Invitation(token=invitation_token, shop_id=shop_id, email=employee_email)

@@ -17,9 +17,9 @@ def create_shop():
     email = get_jwt_identity()
     owner = User.get_by_email(email)
 
-
     shops = owner.shops
     for shop in shops:
+        print(shop)
         if shop.name == shop_name:
             return jsonify({"error": "Name is already in use"}), 400
 
@@ -27,7 +27,7 @@ def create_shop():
     new_shop.save()
     owner.shops.append(new_shop)
     owner.save()
-    return jsonify({"message": "Shop created successfully"}), 201
+    return jsonify(shop=new_shop.get_serialized()), 201
 
 
 @shop_bp.route("/shops", methods=["GET"])
@@ -42,11 +42,6 @@ def get_shops_by_owner():
     
     shop_list = []
     for shop in shops:
-        shop_list.append({
-            "id": str(shop.id),
-            "name": shop.name,
-            "address": shop.address,
-            "owner_id": str(shop.owner.id)
-        })
+        shop_list.append(shop.get_serialized())
 
     return jsonify(shop_list), 200

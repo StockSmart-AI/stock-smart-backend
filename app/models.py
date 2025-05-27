@@ -29,7 +29,6 @@ User Model
 class User(BaseModel):
     name = me.StringField(required=True)
     email = me.EmailField(required=True, unique=True)
-    phone = me.StringField(unique=True)  
     password_hash = me.StringField(required=True)
     otp = me.StringField()
     otp_expiry = me.FloatField()

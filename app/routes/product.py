@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
-from app.models import Product, Item
+from app.models import Product, Item, Transaction, Shop, User
 from flask_jwt_extended import jwt_required
+from flask_jwt_extended import get_jwt_identity
 from bson import ObjectId
 import cloudinary
 from app import utils  
@@ -12,7 +13,8 @@ product_bp = Blueprint('products', __name__)
 @product_bp.route('/', methods=['GET'])
 @jwt_required()
 def get_all_products():
-    products = Product.get_all()
+    shop_id = request.args.get('shop_id')
+    products = Product.objects(shop=ObjectId(shop_id))
     product_list = [
         {
             "id": str(product.id),
@@ -38,16 +40,7 @@ def get_product_by_id(product_id):
     if not product:
         return jsonify({"error": "Product not found"}), 404
 
-    return jsonify({
-        "id": str(product.id),
-        "name": product.name,
-        "shop_id": str(product.shop.id),
-        "price": product.price,
-        "quantity": product.quantity,
-        "threshold": product.threshold,
-        "description": product.description,
-        "category": product.category,
-    }), 200
+    return jsonify(product=product.get_serialized()), 200
 
 
 
@@ -55,22 +48,24 @@ def get_product_by_id(product_id):
 @product_bp.route('/barcode/<barcode>', methods=['GET'])
 @jwt_required()
 def get_product_by_barcode(barcode):
-    item = Item.get_by_barcode(barcode)
-    if not item:
+    shop_id = request.args.get('shop_id')
+
+    matching = []
+    items = Item.get_by_barcode(barcode)
+    if not items:
         return jsonify({"error": "Product not found"}), 404
 
-    product = item.product
-    return jsonify({
-        "id": str(product.id),
-        "name": product.name,
-        "shop_id": str(product.shop.id),
-        "price": product.price,
-        "quantity": product.quantity,
-        "threshold": product.threshold,
-        "description": product.description,
-        "category": product.category,
-        "barcode": item.barcode,
-    }), 200
+    for item in items:
+        product = item.product
+        if shop_id and str(product.shop.id) == shop_id:
+            matching.append({item.barcode: item.product.get_serialized()})
+        
+    if not matching:
+        return jsonify({"error": "Product not found"}), 404
+    
+    print(matching)
+
+    return jsonify(matching), 200
 
 
 # Add a product route
@@ -98,7 +93,7 @@ def add_product():
     is_serialized = data.get('isSerialized', False)
     image_url = image_url if image_url else ""
 
-    if not name or not shop_id or not price or not quantity:
+    if not name or not shop_id or not price:
         return jsonify({"error": "Missing required fields"}), 400
 
     product = Product(
@@ -151,79 +146,89 @@ def delete_product(product_id):
     return jsonify({"message": "Product deleted successfully"}), 200
 
 
-
-#Get by barcode
-@product_bp.route('/barcode/<barcode>', methods=['GET'])
-@jwt_required()
-def scan_barcode(barcode):
-
-    item = Item.get_by_barcode(barcode)
-    if not item:
-        return jsonify({"error": "Product not found"}), 404
-
-    product = item.product
-    return jsonify({
-        "product_id": str(product.id),
-        "name": product.name,
-        "shop_id": str(product.shop.id),
-        "price": product.price,
-        "quantity": product.quantity,
-        "threshold": product.threshold,
-        "description": product.description,
-        "category": product.category,
-        "barcode": item.barcode,
-    }), 200
-
-
-
-#Add Item route
+# Restock route
 @product_bp.route('/restock', methods=['POST'])
 @jwt_required()
 def restock():
     data = request.get_json()
-    products = []
-    items = []
+    shop = data.get('shop')
+    crate = data.get('crate')
+    email = get_jwt_identity()
 
-    for product_id, payload in data:
-        product = Product.get_product_by_id(product_id)
-        if not product:
-            return jsonify({"error": "Product not found"}), 404
+    user = User.get_by_email(email)
 
+    total = 0
+    for item in crate:
+        product = Product.get_by_id(item["product_id"])
         if product.isSerialized:
-            for i in range(payload.quantity):
-                item = Item(product=product, barcode=payload.barcode[i])
-                item.save()
+            for barcode in item["barcodes"]:
+                new_item = Item(barcode=barcode, product=product)
+                new_item.save()
         else:
-            product.quantity += payload.quantity
-            product.save()
+            product.quantity += item["quantity"]
+        
+        total += (item["price"] * item["quantity"])
+            
 
 
-    return jsonify({
-        "message": "Item added successfully",
-        "item_id": str(item.id),
-        "barcode": item.barcode,
-        "product_id": str(item.product.id),
-        "product_name": item.product.name,
-        "shop_id": str(item.product.shop.id),
-        "shop_name": item.product.shop.name,
-        "price": item.product.price,
-        "quantity": item.product.quantity,
-        "threshold": item.product.threshold,
-        "description": item.product.description,
-        "category": item.product.category
-    }), 201
+    transaction = Transaction(shop=shop, user=user, transaction_type="restock", payload=crate, total=total)
+    if not transaction:
+        return jsonify({"error": "Transaction Failed"}), 400
+    
+    transaction.save()
+
+    return jsonify({"message": "Item added successfully"}), 201
 
 
-@product_bp.route('/delete-item/<item_id>', methods=['DELETE'])
+# Sell route
+@product_bp.route('/sell', methods=['POST'])
 @jwt_required()
-def delete_item(item_id):
-    item = Item.objects(id=item_id).first()
+def sell():
+    data = request.get_json()
+    shop = data.get('shop')
+    cart = data.get('cart')
+    email = get_jwt_identity()
+
+    user = User.get_by_email(email)
+
+    total = 0
+    for item in cart:
+        product = Product.get_by_id(item['product_id'])
+        if product.isSerialized:
+            for barcode in item['barcodes']:
+                sold_item = Item.get_by_barcode(barcode)
+                sold_item.delete()
+        else:
+            product.quantity -= item['quantity']
+        
+        total += (item['price'] * item['quantity'])
+            
+
+
+    transaction = Transaction(shop=shop, user=user, transaction_type="sale", payload=cart, total=total)
+    if not transaction:
+        return jsonify({"error": "Transaction Failed"}), 400
+    
+    transaction.save()
+
+    return jsonify({"message": "Items sold successfully"}), 201
+
+
+
+# Delete item by barcode
+@product_bp.route('/delete/barcode', methods=['DELETE'])
+@jwt_required()
+def delete_item(barcode):
+    item = Item.objects(barcode=barcode).first()
     if not item:
         return jsonify({"error": "Item not found"}), 404
 
     item.delete()
 
     return jsonify({"message": "Item deleted successfully"}), 200
+
+
+# get all items of a product
 @product_bp.route('/get-items/<product_id>', methods=['GET'])
 @jwt_required()
 def get_items_by_product_id(product_id):
@@ -235,15 +240,6 @@ def get_items_by_product_id(product_id):
         {
             "id": str(item.id),
             "barcode": item.barcode,
-            "product_id": str(item.product.id),
-            "product_name": item.product.name,
-            "shop_id": str(item.product.shop.id),
-            "shop_name": item.product.shop.name,
-            "price": item.product.price,
-            "quantity": item.product.quantity,
-            "threshold": item.product.threshold,
-            "description": item.product.description,
-            "category": item.product.category
         }
         for item in items
     ]

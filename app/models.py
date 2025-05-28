@@ -2,6 +2,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import mongoengine as me
 from datetime import datetime
 import time
+import pyotp
 
 """
 Base Model
@@ -85,16 +86,35 @@ class User(BaseModel):
         """Check if OTP is valid and not expired"""
         if self.otp and self.otp_expiry:
             if time.time() > self.otp_expiry:
+                # Clear expired OTP
+                self.otp = None
+                self.otp_expiry = None
+                self.save()
                 return False, "OTP expired"
             if self.otp == otp_code:
                 self.isVerified = True
+                # Clear OTP after successful verification
+                self.otp = None
+                self.otp_expiry = None
                 self.save()
                 return True, "OTP verified"
         return False, "Invalid OTP"
     
+    def set_password_reset_token(self):
+        """Generate and store a password reset token"""
+        # Invalidate any existing tokens for this user
+        PasswordResetToken.objects(user=self).delete()
+        
+        token = pyotp.random_base32() # Using pyotp for a random string, could be uuid
+        expiry_time = time.time() + 3600  # Token expires in 1 hour
+        reset_token_doc = PasswordResetToken(user=self, token=token, expiry=expiry_time)
+        reset_token_doc.save()
+        return token
+
     @classmethod
     def get_employees_by_shop_id(cls, shop_id):
-        return cls.objects(shop=shop_id)    
+        return cls.objects(shop=shop_id)
+    
 
 
 """
@@ -222,3 +242,21 @@ class Invitation(me.Document):
     def generate_invitation_link(self):
         """Generate the invitation link using the backend URL."""
         return f"https://stock-smart-backend-ny1z.onrender.com/users/join?token={self.token}"
+
+
+"""
+Password Reset Token Model
+"""
+class PasswordResetToken(me.Document):
+    user = me.ReferenceField('User', required=True, reverse_delete_rule=me.CASCADE)
+    token = me.StringField(required=True, unique=True)
+    expiry = me.FloatField(required=True) # Store as timestamp
+
+    meta = {'collection': 'password_reset_tokens'}
+
+    @classmethod
+    def get_by_token(cls, token):
+        return cls.objects(token=token).first()
+
+    def is_expired(self):
+        return time.time() > self.expiry

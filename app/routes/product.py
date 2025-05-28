@@ -14,7 +14,29 @@ product_bp = Blueprint('products', __name__)
 @jwt_required()
 def get_all_products():
     shop_id = request.args.get('shop_id')
-    products = Product.objects(shop=ObjectId(shop_id))
+    if not shop_id:
+        return jsonify({"error": "shop_id is required"}), 400
+
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 10))
+    except ValueError:
+        return jsonify({"error": "Invalid page or per_page parameter"}), 400
+
+    if page < 1:
+        page = 1
+    if per_page < 1:
+        per_page = 10
+    if per_page > 100: # Optional: limit max items per page
+        per_page = 100
+
+    products_query = Product.objects(shop=ObjectId(shop_id))
+    total_products = products_query.count()
+    
+    # Calculate skip and limit for pagination
+    skip = (page - 1) * per_page
+    paginated_products = products_query.skip(skip).limit(per_page)
+
     product_list = [
         {
             "id": str(product.id),
@@ -25,10 +47,22 @@ def get_all_products():
             "threshold": product.threshold,
             "description": product.description,
             "category": product.category,
+            "image_url": product.image_url  # Added image_url
         }
-        for product in products
+        for product in paginated_products
     ]
-    return jsonify(product_list), 200
+
+    total_pages = (total_products + per_page - 1) // per_page # Ceiling division
+
+    return jsonify({
+        "products": product_list,
+        "page": page,
+        "per_page": per_page,
+        "total_products": total_products,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_prev": page > 1
+    }), 200
 
 
 
@@ -74,27 +108,34 @@ def get_product_by_barcode(barcode):
 def add_product():
     data = request.form
     image_file = request.files.get('image')
-    if not image_file:
-        return jsonify({"error": "Image file is required"}), 400
-
     
-    try:
-        image_url = utils.upload_image_to_cloudinary(image_file)
-    except cloudinary.exceptions.Error as e:
-        return jsonify({"error": "Image upload failed", "details": str(e)}), 500
-  
+    product_image_url = ""  # Default image URL
+
+    if image_file:
+        # If an image file is provided, upload it to Cloudinary
+        try:
+            product_image_url = utils.upload_image_to_cloudinary(image_file)
+        except cloudinary.exceptions.Error as e:
+            return jsonify({"error": "Image upload failed", "details": str(e)}), 500
+    elif data.get('image_url'):
+        # If no image file, but image_url is in form data (from script), use it
+        product_image_url = data.get('image_url')
+    # If neither image_file nor data.get('image_url') is present, 
+    # product_image_url will remain "" (or you can set a default placeholder here)
+
     name = data.get('name')
     price = data.get('price')
     shop_id = data.get('shop_id')
-    quantity = 0
+    quantity = 0  # Default quantity for a new product
     threshold = data.get('threshold', 0)
     description = data.get('description', "")
     category = data.get('category', "")
-    is_serialized = data.get('isSerialized', False)
-    image_url = image_url if image_url else ""
+    # Ensure boolean conversion for isSerialized
+    is_serialized_str = data.get('isSerialized', 'False').lower()
+    is_serialized = is_serialized_str == 'true' 
 
     if not name or not shop_id or not price:
-        return jsonify({"error": "Missing required fields"}), 400
+        return jsonify({"error": "Missing required fields: name, shop_id, price"}), 400
 
     product = Product(
         name=name,
@@ -105,7 +146,7 @@ def add_product():
         description=description,
         category=category,
         isSerialized=is_serialized,
-        image_url=image_url
+        image_url=product_image_url  # Use the determined image URL
     )
     product.save()
 

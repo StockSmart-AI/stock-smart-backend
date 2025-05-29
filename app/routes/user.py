@@ -7,13 +7,14 @@ import mongoengine as me  # Add this import to resolve the NameError
 user_bp = Blueprint('users', __name__)
 
 
-@user_bp.route('/users', methods=['GET'])
+@user_bp.route('/users/<email>', methods=['GET'])
 @jwt_required()
-def get_all_users():
-    users = User.objects.all()
-    user_list = [u.get_serialized() for u in users]
+def get_user_by_email(email):
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
 
-    return jsonify(user_list), 200
+    return jsonify(user.get_serialized()), 200
 
 @user_bp.route('/users/<shop_id>', methods=['GET'])
 @jwt_required()

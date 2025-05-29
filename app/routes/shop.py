@@ -17,11 +17,16 @@ def create_shop():
     email = get_jwt_identity()
     owner = User.get_by_email(email)
 
-    shops = owner.shops
-    for shop in shops:
-        print(shop)
-        if shop and shop.name == shop_name:
-            return jsonify({"error": "Name is already in use"}), 400
+    if not owner:
+        return jsonify({"error": "Owner not found"}), 404
+    
+    if owner.shops:
+        for shop_ref in owner.shops:
+            shop = Shop.get_by_id(id=shop_ref.id).first
+            if shop and shop.name == shop_name:
+                return jsonify({"error": "Name is already in use"}), 400
+            
+    
 
     new_shop = Shop(name=shop_name, address=address, owner=owner)
     new_shop.save()

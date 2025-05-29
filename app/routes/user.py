@@ -7,6 +7,14 @@ import mongoengine as me  # Add this import to resolve the NameError
 user_bp = Blueprint('users', __name__)
 
 
+@user_bp.route('/users', methods=['GET'])
+@jwt_required()
+def get_all_users():
+    users = User.objects.all()
+    user_list = [u.get_serialized() for u in users]
+
+    return jsonify(user_list), 200
+
 @user_bp.route('/users/<shop_id>', methods=['GET'])
 @jwt_required()
 def get_user_by_shop(shop_id):

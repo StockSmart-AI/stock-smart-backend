@@ -7,7 +7,7 @@ import mongoengine as me  # Add this import to resolve the NameError
 user_bp = Blueprint('users', __name__)
 
 
-@user_bp.route('/users/<email>', methods=['GET'])
+@user_bp.route('/user/<email>', methods=['GET'])
 @jwt_required()
 def get_user_by_email(email):
     user = User.get_by_email(email)

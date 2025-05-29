@@ -128,6 +128,12 @@ class Shop(BaseModel):
 
     meta = {'collection': 'shops'}
 
+    def get_serialized(self):
+        data = super().get_serialized()
+        if 'owner' in data and data['owner'] is not None:
+            data['owner'] = str(self.owner.id)
+        return data
+    
     @classmethod
     def get_by_owner_id(cls, owner_id):
         return cls.objects(owner=owner_id)
@@ -211,18 +217,19 @@ class Transaction(BaseModel):
     total = me.FloatField(required=True)
 
     def save(self, *args, **kwargs):
-        self.total = sum(
-            product.price * quantity
-            for productId, quantity in self.products.items()
-            for product in Product.objects(id=productId)
-        )
+        if self.payload:
+            self.total = sum(
+                item.price * item.quantity for item in self.payload
+            )
+        else:
+            self.total = 0.0
 
         super().save(*args, **kwargs)
 
     meta = {'collection': 'transactions'}
 
 
-class Invitation(me.Document):
+class Invitation(BaseModel):
     token = me.StringField(required=True, unique=True)
     shop_id = me.ReferenceField('Shop', required=True, reverse_delete_rule=me.CASCADE)
     email = me.EmailField(required=True)

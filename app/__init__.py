@@ -5,6 +5,7 @@ from app.routes.user import user_bp
 from app.routes.shop import shop_bp
 from app.routes.product import product_bp
 from app.routes.upload import upload_bp
+from app.routes.analytics import analytics_bp
 from app.db import me
 import os
 from flask_jwt_extended import JWTManager
@@ -49,4 +50,5 @@ def create_app():
     app.register_blueprint(upload_bp, url_prefix='/upload')
     app.register_blueprint(shop_bp, url_prefix='/shops')
     app.register_blueprint(product_bp, url_prefix='/products')
+    app.register_blueprint(analytics_bp, url_prefix='/analytics')
     return app

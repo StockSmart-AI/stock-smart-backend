@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.models import User, Invitation  # Ensure Invitation is imported
+from app.models import User, Invitation, Shop  # Ensure Invitation is imported
 from flask_jwt_extended import get_jwt_identity, jwt_required
 import uuid
 import mongoengine as me  # Add this import to resolve the NameError
@@ -10,17 +10,18 @@ user_bp = Blueprint('users', __name__)
 @user_bp.route('/users/<shop_id>', methods=['GET'])
 @jwt_required()
 def get_user_by_shop(shop_id):
-    users = User.get_by_shop_id(shop_id)
-    if not user:
+    users = User.get_employees_by_shop_id(shop_id)
+    if not users:
         return jsonify({"error": "User not found"}), 404
 
-    user_list = []
-    for user in user:
+    shop = Shop.get_by_id(shop_id)
+
+    user_list = [shop.owner.get_serialized()] if shop and shop.owner else []
+    for user in users:
         user_list.append({
             "id": user.id,
             "name": user.name,
             "email": user.email,
-            "phone": user.phone,
             "role": user.role
         })
 
@@ -86,7 +87,7 @@ def invite_employee():
         return jsonify({"error": "Failed to send invitation email"}), 500
 
 
-@user_bp.route('/users/join', methods=['POST'])
+@user_bp.route('/users/join', methods=['GET'])
 def join_shop():
     token = request.args.get("token")
     if not token:
@@ -101,7 +102,6 @@ def join_shop():
     data = request.get_json()
     name = data.get("name")
     password = data.get("password")
-    phone = data.get("phone")  # Optional phone field
 
     if not name or not password:
         return jsonify({"error": "Name and password are required"}), 400
@@ -114,8 +114,6 @@ def join_shop():
         "role": "employee",
         "shop": invitation.shop_id
     }
-    if phone:  # Only include phone if it's provided
-        user_data["phone"] = phone
 
     # Create and save the user
     new_user = User(**user_data)

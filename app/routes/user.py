@@ -51,7 +51,9 @@ def invite_employee():
 
     owner_email = get_jwt_identity()
     owner = User.get_by_email(owner_email)
-
+    employee = User.get_by_email(employee_email)
+    if  not employee:
+        return jsonify({"error": "Employee does not exist"}), 404
     if not owner or owner.role != "owner":
         return jsonify({"error": "Only shop owners can send invitations"}), 403
 

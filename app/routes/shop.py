@@ -20,7 +20,7 @@ def create_shop():
     shops = owner.shops
     for shop in shops:
         print(shop)
-        if shop.name == shop_name:
+        if shop and shop.name == shop_name:
             return jsonify({"error": "Name is already in use"}), 400
 
     new_shop = Shop(name=shop_name, address=address, owner=owner)

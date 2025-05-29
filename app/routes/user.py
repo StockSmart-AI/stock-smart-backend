@@ -109,29 +109,10 @@ def join_shop():
     if not invitation:
         return jsonify({"error": "Invalid or expired invitation"}), 404
 
-    # Create the user and associate them with the shop
-    data = request.get_json()
-    name = data.get("name")
-    password = data.get("password")
-
-    if not name or not password:
-        return jsonify({"error": "Name and password are required"}), 400
-
-    # Prepare user data
-    user_data = {
-        "name": name,
-        "email": invitation.email,
-        "password": password,
-        "role": "employee",
-        "shop": invitation.shop_id
-    }
-
-    # Create and save the user
-    new_user = User(**user_data)
-    try:
-        new_user.save()
-    except me.NotUniqueError as e:
-        return jsonify({"error": "A user with this phone number already exists"}), 400
+    user = User.get_by_email(invitation.email)
+    if user and user.role != "employee":
+        user.shop_id = invitation.shop_id
+        user.save()
 
     # Delete the invitation after use
     invitation.delete()

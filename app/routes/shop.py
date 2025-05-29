@@ -22,7 +22,7 @@ def create_shop():
     
     if owner.shops:
         for shop_ref in owner.shops:
-            shop = Shop.get_by_id(id=shop_ref.id).first
+            shop = Shop.get_by_id(id=shop_ref.id).first()
             if shop and shop.name == shop_name:
                 return jsonify({"error": "Name is already in use"}), 400
             

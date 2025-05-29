@@ -37,6 +37,7 @@ class User(BaseModel):
     shop = me.ReferenceField('Shop') 
     shops = me.ListField(me.ReferenceField('Shop')) 
     isVerified = me.BooleanField(required=True, default=False)
+    canRestock = me.BooleanField(default=False)
     
     meta = {'collection': 'users'}
 
@@ -232,6 +233,7 @@ class Transaction(BaseModel):
 class Invitation(BaseModel):
     token = me.StringField(required=True, unique=True)
     shop_id = me.ReferenceField('Shop', required=True, reverse_delete_rule=me.CASCADE)
+    canRestock = me.BooleanField(default=False)
     email = me.EmailField(required=True)
 
     meta = {'collection': 'invitations'}

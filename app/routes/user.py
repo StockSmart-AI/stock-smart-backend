@@ -54,6 +54,7 @@ def invite_employee():
     data = request.get_json()
     shop_id = data.get("shop_id")
     employee_email = data.get("email")
+    canRestock = data.get("canRestock", False)
 
     if not shop_id or not employee_email:
         return jsonify({"error": "shop_id and email are required"}), 400
@@ -71,7 +72,7 @@ def invite_employee():
     invitation_link = f"https://stock-smart-backend-ny1z.onrender.com/users/join?token={invitation_token}"
 
     # Save the invitation to the database
-    new_invitation = Invitation(token=invitation_token, shop_id=shop_id, email=employee_email)
+    new_invitation = Invitation(token=invitation_token, shop_id=shop_id, email=employee_email, canRestock=canRestock)
     new_invitation.save()
 
     # Construct the invitation email
@@ -112,6 +113,7 @@ def join_shop():
     user = User.get_by_email(invitation.email)
     if user and user.role != "employee":
         user.shop_id = invitation.shop_id
+        user.canRestock = invitation.canRestock
         user.save()
 
     # Delete the invitation after use

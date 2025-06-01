@@ -38,6 +38,7 @@ class User(BaseModel):
     shops = me.ListField(me.ReferenceField('Shop')) 
     isVerified = me.BooleanField(required=True, default=False)
     canRestock = me.BooleanField(default=False)
+    fcm_token = me.StringField(null=True, blank=True) 
     
     meta = {'collection': 'users'}
 
@@ -197,7 +198,7 @@ class Item(BaseModel):
 """
 Payload embeded document definition
 """
-class ProductPayload(me.EmbeddedDocument):
+class SaleItemPayload(me.EmbeddedDocument):
     product_id = me.StringField(required=True)
     name = me.StringField(required=True)
     category = me.StringField(required=True)
@@ -205,6 +206,30 @@ class ProductPayload(me.EmbeddedDocument):
     price = me.FloatField(required=True)
     isSerialized = me.BooleanField(default=False)
     barcodes = me.ListField(me.StringField())
+
+
+"""
+RestockItemPayload
+"""
+class RestockItemPayload(me.EmbeddedDocument):
+    product_id = me.StringField(required=True)
+    cost_price = me.FloatField(required=True) 
+    isSerialized = me.BooleanField(required=True)
+    quantity = me.IntField()
+    barcodes = me.ListField(me.StringField()) 
+
+    def clean(self):
+        if self.isSerialized:
+            if not self.barcodes:
+                raise me.ValidationError("Barcodes are required for serialized restock items.")
+            # Automatically set quantity for serialized items based on barcodes length
+            self.quantity = len(self.barcodes)
+        else: # Not serialized
+            if self.quantity is None or self.quantity <= 0:
+                raise me.ValidationError("A positive quantity is required for non-serialized restock items.")
+            if self.barcodes:
+                raise me.ValidationError("Barcodes should not be provided for non-serialized restock items.")
+
 
 """
 Transaction Model
@@ -214,17 +239,48 @@ class Transaction(BaseModel):
     shop = me.ReferenceField(Shop, required=True)
     user = me.ReferenceField(User, required=True)
     transaction_type = me.StringField(choices=["sale", "restock"], required=True)
-    payload = me.ListField(me.EmbeddedDocumentField(ProductPayload), required=True)
+    payload = me.ListField(me.GenericEmbeddedDocumentField(), required=True)
     total = me.FloatField(required=True)
 
-    def save(self, *args, **kwargs):
-        if self.payload:
-            self.total = sum(
-                item.price * item.quantity for item in self.payload
-            )
-        else:
-            self.total = 0.0
+    def clean(self):
+        """Validates payload based on transaction_type."""
+        if not self.payload:
+            raise me.ValidationError("Payload cannot be empty.")
 
+        if self.transaction_type == "sale":
+            for item in self.payload:
+                if not isinstance(item, SaleItemPayload):
+                    raise me.ValidationError(
+                        "Invalid item type in payload for 'sale' transaction. Expected SaleItemPayload."
+                    )
+        elif self.transaction_type == "restock":
+            if len(self.payload) != 1:
+                raise me.ValidationError("Restock transaction payload must contain exactly one item.")
+            item = self.payload[0]
+            if not isinstance(item, RestockItemPayload):
+                raise me.ValidationError(
+                    "Invalid item type in payload for 'restock' transaction. Expected RestockItemPayload."
+                )
+
+    def save(self, *args, **kwargs):
+        self.clean()
+
+        current_total = 0.0
+        if self.payload:
+            if self.transaction_type == "sale":
+                for item in self.payload:
+                    if isinstance(item, SaleItemPayload):
+                        current_total += item.price * item.quantity
+                    # else: already handled by clean()
+            elif self.transaction_type == "restock":
+                # Restock payload is expected to have one item after clean()
+                item = self.payload[0]
+                if isinstance(item, RestockItemPayload):
+                    qty_to_consider = item.quantity # quantity is now correctly set in RestockItemPayload.clean()
+                    current_total += item.cost_price * qty_to_consider
+                # else: already handled by clean()
+        
+        self.total = current_total
         super().save(*args, **kwargs)
 
     meta = {'collection': 'transactions'}

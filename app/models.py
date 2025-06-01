@@ -248,19 +248,23 @@ class Transaction(BaseModel):
             raise me.ValidationError("Payload cannot be empty.")
 
         if self.transaction_type == "sale":
-            for item in self.payload:
-                if not isinstance(item, SaleItemPayload):
+            for item_in_payload in self.payload:
+                if not isinstance(item_in_payload, SaleItemPayload):
                     raise me.ValidationError(
                         "Invalid item type in payload for 'sale' transaction. Expected SaleItemPayload."
                     )
+                # If SaleItemPayload had a clean method, it would be called here:
+                # if hasattr(item_in_payload, 'clean') and callable(getattr(item_in_payload, 'clean')):
+                #     item_in_payload.clean()
         elif self.transaction_type == "restock":
             if len(self.payload) != 1:
                 raise me.ValidationError("Restock transaction payload must contain exactly one item.")
-            item = self.payload[0]
-            if not isinstance(item, RestockItemPayload):
+            item_in_payload = self.payload[0]
+            if not isinstance(item_in_payload, RestockItemPayload):
                 raise me.ValidationError(
                     "Invalid item type in payload for 'restock' transaction. Expected RestockItemPayload."
                 )
+            item_in_payload.clean() # Explicitly call clean on the RestockItemPayload
 
     def save(self, *args, **kwargs):
         self.clean()

@@ -383,7 +383,7 @@ def sell():
 
 
 # Delete item by barcode
-@product_bp.route('/delete/<barcode>', methods=['DELETE'])
+@product_bp.route('/delete-item/<barcode>', methods=['DELETE'])
 @jwt_required()
 def delete_item(barcode):
     item = Item.objects(barcode=barcode).first()

@@ -38,7 +38,6 @@ class User(BaseModel):
     shops = me.ListField(me.ReferenceField('Shop')) 
     isVerified = me.BooleanField(required=True, default=False)
     canRestock = me.BooleanField(default=False)
-    fcm_token = me.StringField(null=True, blank=True) 
     
     meta = {'collection': 'users'}
 

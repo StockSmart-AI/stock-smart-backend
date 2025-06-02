@@ -5,7 +5,6 @@ from flask_jwt_extended import get_jwt_identity
 from bson import ObjectId
 import cloudinary
 from app import utils  
-from mongoengine import F
 
 product_bp = Blueprint('products', __name__)
 

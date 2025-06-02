@@ -127,7 +127,7 @@ def forgot_password():
     # Assuming auth_bp is registered with '/auth' prefix, e.g., app.register_blueprint(auth_bp, url_prefix='/auth')
     # If no prefix, it would be '/reset-password-form/{reset_token_value}'
     # Make sure your backend URL is correct (e.g., http://127.0.0.1:5000)
-    reset_link = f"http://127.0.0.1:5000/auth/reset-password-form/{reset_token_value}" 
+    reset_link = f"https://stock-smart-backend-ny1z.onrender.com/auth/reset-password-form/{reset_token_value}" 
 
     try:
         send_password_reset_email(user.email, reset_link)

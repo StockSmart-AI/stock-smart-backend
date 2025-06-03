@@ -4,72 +4,61 @@ import pandas as pd
 from prophet import Prophet
 from sklearn.metrics import mean_absolute_error
 import matplotlib.pyplot as plt
-from bson import ObjectId
 
 prophet_bp = Blueprint('prophet', __name__)
 
-# Step 1: Load original CSV
 df = pd.read_csv('../data/demand_forecasting_pattern.csv')
 
-# Step 2: Generate MongoDB-safe ObjectIds
-store_id_map = {store_id: str(ObjectId()) for store_id in df['Store ID'].unique()}
-product_id_map = {product_id: str(ObjectId()) for product_id in df['Product ID'].unique()}
 
-# Step 3: Add ObjectId columns to DataFrame
-df['store_oid'] = df['Store ID'].map(store_id_map)
-df['product_oid'] = df['Product ID'].map(product_id_map)
-
-
-def demand_forecast(store_oid, product_oid, periods=7, plot=False):
-    # Use ObjectId-based IDs for filtering
-    sub_df = df[(df['store_oid'] == store_oid) & (df['product_oid'] == product_oid)].copy()
-
+def demand_forecast(store_id, product_id, periods=7, plot=False):
+    sub_df = df[(df['Store ID'] == store_id) & (df['Product ID'] == product_id)].copy()
+    
     sub_df.drop(columns=[
-        'Product ID',
-        'Store ID',
-        'Price',
-        'Promotions',
-        'Seasonality Factors',
-        'External Factors',
-        'Demand Trend',
-        'Customer Segments',
-        'DayOfWeek',
-        'IsWeekend',
-        'Month',
-        'Season',
-        'IsHoliday',
-        'IsFestival',
-        'Seasonal Type',
-        'store_oid',
-        'product_oid'
+    'Product ID',
+    'Store ID',
+    'Price',
+    'Promotions',
+    'Seasonality Factors',
+    'External Factors',
+    'Demand Trend',
+    'Customer Segments',
+    'DayOfWeek',
+    'IsWeekend',
+    'Month',
+    'Season',
+    'IsHoliday',
+    'IsFestival',
+    'Seasonal Type',
+    
     ], inplace=True)
 
     sub_df.columns = ['ds', 'y']
+
     sub_df['ds'] = pd.to_datetime(sub_df['ds'])
 
+    
     train = sub_df[:-periods]
     test = sub_df[-periods:]
 
     if train['y'].notnull().sum() < 2:
-        print(f"Not enough data for store {store_oid}")
-        return None, f"Not enough data for store {store_oid}"
+        print(f"Not enough data for store {store_id}")
+        return None
 
-    m = Prophet(interval_width=0.95)
+    m = Prophet(interval_width = 0.95)
     m.fit(train)
     future = m.make_future_dataframe(periods=periods, freq='D')
     forecast = m.predict(future)
-
+    
     merged = forecast[['ds', 'yhat']].merge(test[['ds', 'y']], on='ds', how='inner')
     mae = mean_absolute_error(merged['y'], merged['yhat'])
-    print(f"Store {store_oid} - MAE: {mae:.2f}")
-
+    print(f"Store {store_id} - MAE: {mae:.2f}")
+    
     if plot:
         fig = m.plot(forecast)
-        plt.title(f"Forecast for Store {store_oid}")
+        plt.title(f"Forecast for Store {store_id}")
         plt.show()
-
     return forecast, mae
-
+    
 
 @prophet_bp.route('/forecast', methods=['POST'])
 @jwt_required()
@@ -104,3 +93,10 @@ def get_forecast():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+
+
+
+
+    

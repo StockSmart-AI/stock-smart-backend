@@ -235,3 +235,119 @@ def get_top_stocked_products_data(shop_id_str):
             })
     
     return jsonify(top_stocked_products_list_data), 200
+
+
+@analytics_bp.route('/product_sales/<shop_id_str>', methods=['GET'])
+@jwt_required()
+def get_product_sales_analytics(shop_id_str):
+    try:
+        shop_id = ObjectId(shop_id_str)
+    except Exception:
+        return jsonify({"error": "Invalid shop_id format"}), 400
+    
+    shop = Shop.get_by_id(shop_id)
+    if not shop:
+        return jsonify({"error": "Shop not found"}), 404
+
+    # Authorization check
+    current_user_email = get_jwt_identity()
+    user = User.get_by_email(current_user_email)
+
+    if not user:
+        return jsonify({"error": "User not found"}), 401 
+
+    has_access = False
+    if user.role == "owner":
+        # Check if the shop_id is in the owner's list of shops
+        if shop_id in [s.id for s in user.shops]:
+            has_access = True
+    elif user.role == "employee":
+        # Check if the employee is assigned to this shop
+        if user.shop and user.shop.id == shop_id:
+            has_access = True
+    
+    if not has_access:
+        return jsonify({"error": "Access forbidden: You do not have permission to view analytics for this shop."}), 403
+
+    # Get query parameters
+    product_id = request.args.get('product_id')
+    granularity = request.args.get('granularity', 'daily')  # daily, weekly, monthly, annual
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+
+    # Validate granularity
+    if granularity not in ['daily', 'weekly', 'monthly', 'annual']:
+        return jsonify({"error": "Invalid granularity. Must be one of: daily, weekly, monthly, annual"}), 400
+
+    # Parse dates
+    try:
+        if start_date:
+            start_datetime = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+        else:
+            # Default to 30 days ago if no start date provided
+            start_datetime = datetime.utcnow() - timedelta(days=30)
+
+        if end_date:
+            end_datetime = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+        else:
+            end_datetime = datetime.utcnow()
+    except Exception as e:
+        return jsonify({"error": f"Invalid date format: {str(e)}"}), 400
+
+    # Build query
+    query = {
+        'shop': shop.id,
+        'transaction_type': 'sale',
+        'date__gte': start_datetime,
+        'date__lte': end_datetime
+    }
+
+    # Get transactions
+    transactions = Transaction.objects(**query)
+
+    # Initialize data structure for sales
+    sales_data = defaultdict(lambda: defaultdict(int))
+
+    # Process transactions
+    for transaction in transactions:
+        for item in transaction.payload:
+            if product_id and str(item.product_id) != product_id:
+                continue
+
+            # Get the appropriate time key based on granularity
+            if granularity == 'daily':
+                time_key = transaction.date.strftime('%Y-%m-%d')
+            elif granularity == 'weekly':
+                # Get the start of the week (Monday)
+                week_start = transaction.date - timedelta(days=transaction.date.weekday())
+                time_key = week_start.strftime('%Y-%m-%d')
+            elif granularity == 'monthly':
+                time_key = transaction.date.strftime('%Y-%m')
+            else:  # annual
+                time_key = transaction.date.strftime('%Y')
+
+            # Add to sales data
+            sales_data[time_key][item.name] += item.quantity
+
+    # Format response
+    response_data = []
+    for time_key in sorted(sales_data.keys()):
+        period_data = {
+            'period': time_key,
+            'sales': []
+        }
+        
+        for product_name, quantity in sales_data[time_key].items():
+            period_data['sales'].append({
+                'product_name': product_name,
+                'quantity': quantity
+            })
+        
+        response_data.append(period_data)
+
+    return jsonify({
+        'granularity': granularity,
+        'start_date': start_datetime.isoformat(),
+        'end_date': end_datetime.isoformat(),
+        'data': response_data
+    }), 200

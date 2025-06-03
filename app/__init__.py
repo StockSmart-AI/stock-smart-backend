@@ -52,5 +52,5 @@ def create_app():
     app.register_blueprint(shop_bp, url_prefix='/shops')
     app.register_blueprint(product_bp, url_prefix='/products')
     app.register_blueprint(analytics_bp, url_prefix='/analytics')
-    app.register_blueprint(notification_bp, url_prefix='/api')
+    app.register_blueprint(notification_bp)
     return app

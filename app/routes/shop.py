@@ -37,16 +37,26 @@ def create_shop():
 
 @shop_bp.route("/shops", methods=["GET"])
 @jwt_required()
-def get_shops_by_owner():
+def get_shops_by_user():
     email = get_jwt_identity()
-    owner = User.get_by_email(email)
-    shops = Shop.get_by_owner_id(owner.id)
-
-    if not shops:
-        return jsonify({"error": "No shops found for this owner"}), 404
+    user = User.get_by_email(email)
     
-    shop_list = []
-    for shop in shops:
-        shop_list.append(shop.get_serialized())
+    if not user:
+        return jsonify({"error": "User not found"}), 404
 
-    return jsonify(shop_list), 200
+    if user.role == "owner":
+        shops = Shop.get_by_owner_id(user.id)
+        if not shops:
+            return jsonify({"error": "No shops found for this owner"}), 404
+        
+        shop_list = []
+        for shop in shops:
+            shop_list.append(shop.get_serialized())
+        return jsonify(shop_list), 200
+    
+    elif user.role == "employee":
+        if not user.shop:
+            return jsonify({"error": "No shop associated with this employee"}), 404
+        return jsonify([user.shop.get_serialized()]), 200
+    
+    return jsonify({"error": "Invalid user role"}), 400

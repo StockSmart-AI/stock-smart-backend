@@ -412,36 +412,3 @@ def get_items_by_product_id(product_id):
     ]
 
     return jsonify(item_list), 200
-
-
-@product_bp.route('/low-stock-alerts', methods=['GET'])
-@jwt_required()
-def get_low_stock_alerts():
-    shop_id = request.args.get('shop_id')
-    if not shop_id:
-        return jsonify({"error": "shop_id is required"}), 400
-
-    try:
-        # Get all products for the shop that are below their threshold
-        low_stock_products = Product.objects(
-            shop=ObjectId(shop_id),
-            quantity__lt=F('threshold')  # quantity less than threshold
-        )
-
-        alerts = [{
-            "product_id": str(product.id),
-            "name": product.name,
-            "current_quantity": product.quantity,
-            "threshold": product.threshold,
-            "shortage": product.threshold - product.quantity,
-            "category": product.category,
-            "image_url": product.image_url
-        } for product in low_stock_products]
-
-        return jsonify({
-            "alerts": alerts,
-            "total_alerts": len(alerts)
-        }), 200
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500

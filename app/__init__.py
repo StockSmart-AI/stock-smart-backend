@@ -56,5 +56,5 @@ def create_app():
     app.register_blueprint(analytics_bp, url_prefix='/analytics')
     app.register_blueprint(notification_bp)
     app.register_blueprint(transaction_bp)
-    app.register_blueprint(prophet_bp)
+    # app.register_blueprint(prophet_bp)
     return app

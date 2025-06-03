@@ -8,11 +8,10 @@ import os
 
 prophet_bp = Blueprint('prophet', __name__)
 
-# Get the absolute path to the data directory
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(os.path.dirname(current_dir))
-csv_path = os.path.join(project_root, 'data', 'demand_forecasting_pattern.csv')
-
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Construct the path to the CSV file
+csv_path = os.path.join(BASE_DIR, 'data', 'demand_forecasting_pattern.csv')
+# Read the CSV file
 df = pd.read_csv(csv_path)
 
 

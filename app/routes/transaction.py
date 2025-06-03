@@ -26,8 +26,6 @@ def get_transactions():
     # Get query parameters for filtering
     shop_id = request.args.get('shop_id')
     transaction_type = request.args.get('type')  # 'sale' or 'restock'
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
     
     # Base query
     query = {}
@@ -53,26 +51,18 @@ def get_transactions():
     if transaction_type in ['sale', 'restock']:
         query['transaction_type'] = transaction_type
     
-    # Add date range filters if provided
-    if start_date:
-        try:
-            start_datetime = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-            query['date__gte'] = start_datetime
-        except ValueError:
-            return jsonify({"error": "Invalid start_date format"}), 400
-    
-    if end_date:
-        try:
-            end_datetime = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-            query['date__lte'] = end_datetime
-        except ValueError:
-            return jsonify({"error": "Invalid end_date format"}), 400
-    
     # Get transactions with pagination
-    page = int(request.args.get('page', 1))
-    per_page = int(request.args.get('per_page', 10))
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 10))
+        if page < 1 or per_page < 1:
+            return jsonify({"error": "Page and per_page must be positive integers"}), 400
+    except ValueError:
+        return jsonify({"error": "Invalid page or per_page parameters"}), 400
+    
     skip = (page - 1) * per_page
     
+    # Get transactions ordered by date (most recent first)
     transactions = Transaction.objects(**query).order_by('-date').skip(skip).limit(per_page)
     total = Transaction.objects(**query).count()
     

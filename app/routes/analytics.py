@@ -20,11 +20,10 @@ def get_shop_or_404(shop_id_str):
         return None, jsonify({"error": "Shop not found"}), 404
 
     # Authorization check
-    current_user_id = get_jwt_identity()
-    user = User.get_by_id(current_user_id)
+    current_user_email = get_jwt_identity()
+    user = User.get_by_email(current_user_email)
 
     if not user:
-        # This case should ideally not happen if JWT is valid and user exists
         return None, jsonify({"error": "User not found"}), 401 
 
     has_access = False

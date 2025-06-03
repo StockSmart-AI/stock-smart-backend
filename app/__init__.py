@@ -8,6 +8,7 @@ from app.routes.upload import upload_bp
 from app.routes.analytics import analytics_bp
 from app.routes.notification import notification_bp
 from app.routes.transaction import transaction_bp
+from app.routes.ai import prophet_bp
 from app.db import me
 import os
 from flask_jwt_extended import JWTManager
@@ -55,4 +56,5 @@ def create_app():
     app.register_blueprint(analytics_bp, url_prefix='/analytics')
     app.register_blueprint(notification_bp)
     app.register_blueprint(transaction_bp)
+    app.register_blueprint(prophet_bp)
     return app

@@ -3,12 +3,24 @@ import mongoengine as me
 from datetime import datetime
 import time
 import pyotp
+from bson import ObjectId
 
 """
 Base Model
 """
 class BaseModel(me.Document):
     meta = {'abstract': True}
+
+    def __init__(self, *args, **kwargs):
+        # Handle id if provided
+        if 'id' in kwargs:
+            try:
+                # Convert string id to ObjectId
+                kwargs['_id'] = ObjectId(kwargs.pop('id'))
+            except Exception:
+                # If conversion fails, keep the original id
+                kwargs['_id'] = kwargs.pop('id')
+        super().__init__(*args, **kwargs)
 
     def get_serialized(self):
         data = self.to_mongo().to_dict()
@@ -17,8 +29,14 @@ class BaseModel(me.Document):
 
     @classmethod
     def get_by_id(cls, id):
-        return cls.objects(id=id).first()
-    
+        try:
+            # Try to convert string id to ObjectId
+            if isinstance(id, str):
+                id = ObjectId(id)
+            return cls.objects(id=id).first()
+        except Exception:
+            return None
+
     @classmethod
     def get_all(cls):
         return cls.objects.all()
@@ -44,7 +62,6 @@ class User(BaseModel):
     def __init__(self, *args, password=None, **kwargs):
         if password:
             kwargs['password_hash'] = generate_password_hash(password, method="scrypt")
-
         super().__init__(*args, **kwargs)
 
 
@@ -129,6 +146,15 @@ class Shop(BaseModel):
 
     meta = {'collection': 'shops'}
 
+    def __init__(self, *args, **kwargs):
+        # Handle owner_id if provided
+        if 'owner_id' in kwargs:
+            try:
+                kwargs['owner'] = ObjectId(kwargs.pop('owner_id'))
+            except Exception:
+                kwargs['owner'] = kwargs.pop('owner_id')
+        super().__init__(*args, **kwargs)
+
     def get_serialized(self):
         data = super().get_serialized()
         if 'owner' in data and data['owner'] is not None:
@@ -156,6 +182,15 @@ class Product(BaseModel):
 
     meta = {'collection': 'products'}
 
+    def __init__(self, *args, **kwargs):
+        # Handle shop_id if provided
+        if 'shop_id' in kwargs:
+            try:
+                kwargs['shop'] = ObjectId(kwargs.pop('shop_id'))
+            except Exception:
+                kwargs['shop'] = kwargs.pop('shop_id')
+        super().__init__(*args, **kwargs)
+
     def get_serialized(self):
         data = self.to_mongo().to_dict()
         data["id"] = str(data.pop("_id"))
@@ -175,6 +210,15 @@ class Item(BaseModel):
     product = me.ReferenceField(Product, required=True, reverse_delete_rule=me.CASCADE)
     barcode = me.StringField(unique=True)
     meta = {'collection': 'items'}
+
+    def __init__(self, *args, **kwargs):
+        # Handle product_id if provided
+        if 'product_id' in kwargs:
+            try:
+                kwargs['product'] = ObjectId(kwargs.pop('product_id'))
+            except Exception:
+                kwargs['product'] = kwargs.pop('product_id')
+        super().__init__(*args, **kwargs)
 
     def save(self, *args, **kwargs):
         if self.product:
@@ -241,6 +285,20 @@ class Transaction(BaseModel):
     payload = me.ListField(me.GenericEmbeddedDocumentField(), required=True)
     total = me.FloatField(required=True)
 
+    def __init__(self, *args, **kwargs):
+        # Handle shop_id and user_id if provided
+        if 'shop_id' in kwargs:
+            try:
+                kwargs['shop'] = ObjectId(kwargs.pop('shop_id'))
+            except Exception:
+                kwargs['shop'] = kwargs.pop('shop_id')
+        if 'user_id' in kwargs:
+            try:
+                kwargs['user'] = ObjectId(kwargs.pop('user_id'))
+            except Exception:
+                kwargs['user'] = kwargs.pop('user_id')
+        super().__init__(*args, **kwargs)
+
     def clean(self):
         """Validates payload based on transaction_type."""
         if not self.payload:
@@ -297,6 +355,15 @@ class Invitation(BaseModel):
 
     meta = {'collection': 'invitations'}
 
+    def __init__(self, *args, **kwargs):
+        # Handle shop_id if provided
+        if 'shop_id' in kwargs:
+            try:
+                kwargs['shop'] = ObjectId(kwargs.pop('shop_id'))
+            except Exception:
+                kwargs['shop'] = kwargs.pop('shop_id')
+        super().__init__(*args, **kwargs)
+
     @staticmethod
     def get_by_token(token):
         return Invitation.objects(token=token).first()
@@ -318,9 +385,18 @@ Password Reset Token Model
 class PasswordResetToken(me.Document):
     user = me.ReferenceField('User', required=True, reverse_delete_rule=me.CASCADE)
     token = me.StringField(required=True, unique=True)
-    expiry = me.FloatField(required=True) # Store as timestamp
+    expiry = me.FloatField(required=True)
 
     meta = {'collection': 'password_reset_tokens'}
+
+    def __init__(self, *args, **kwargs):
+        # Handle user_id if provided
+        if 'user_id' in kwargs:
+            try:
+                kwargs['user'] = ObjectId(kwargs.pop('user_id'))
+            except Exception:
+                kwargs['user'] = kwargs.pop('user_id')
+        super().__init__(*args, **kwargs)
 
     @classmethod
     def get_by_token(cls, token):
@@ -343,6 +419,17 @@ class Notification(BaseModel):
     updated_at = me.DateTimeField(default=datetime.utcnow)
 
     meta = {'collection': 'notifications'}
+
+    def __init__(self, *args, **kwargs):
+        # Handle reference IDs if provided
+        for field in ['sender', 'recipient', 'shop']:
+            field_id = f'{field}_id'
+            if field_id in kwargs:
+                try:
+                    kwargs[field] = ObjectId(kwargs.pop(field_id))
+                except Exception:
+                    kwargs[field] = kwargs.pop(field_id)
+        super().__init__(*args, **kwargs)
 
     def get_serialized(self):
         data = super().get_serialized()

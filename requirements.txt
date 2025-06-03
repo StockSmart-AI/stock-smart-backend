@@ -26,3 +26,10 @@ pandas==2.2.1
 prophet==1.1.5
 scikit-learn==1.4.1
 matplotlib==3.8.3
+numpy==1.26.4
+pystan==2.19.1.1
+holidays==0.45
+lunar-calendar==0.1.5
+convertdate==2.4.0
+korean-lunar-calendar==0.3.1
+ephem==4.1.4

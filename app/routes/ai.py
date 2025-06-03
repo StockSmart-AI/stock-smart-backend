@@ -4,10 +4,16 @@ import pandas as pd
 from prophet import Prophet
 from sklearn.metrics import mean_absolute_error
 import matplotlib.pyplot as plt
+import os
 
 prophet_bp = Blueprint('prophet', __name__)
 
-df = pd.read_csv('./demand_forecasting_pattern.csv')
+# Get the absolute path to the data directory
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(current_dir))
+csv_path = os.path.join(project_root, 'data', 'demand_forecasting_pattern.csv')
+
+df = pd.read_csv(csv_path)
 
 
 def demand_forecast(store_id, product_id, periods=7, plot=False):

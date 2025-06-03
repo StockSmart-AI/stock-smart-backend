@@ -328,3 +328,33 @@ class PasswordResetToken(me.Document):
 
     def is_expired(self):
         return time.time() > self.expiry
+
+"""
+Notification Model
+"""
+class Notification(BaseModel):
+    sender = me.ReferenceField('User', required=True)
+    recipient = me.ReferenceField('User', required=True)
+    shop = me.ReferenceField('Shop', required=True)
+    type = me.StringField(required=True, choices=['access_request', 'access_granted', 'access_denied'])
+    message = me.StringField(required=True)
+    status = me.StringField(required=True, choices=['pending', 'approved', 'rejected'], default='pending')
+    created_at = me.DateTimeField(default=datetime.utcnow)
+    updated_at = me.DateTimeField(default=datetime.utcnow)
+
+    meta = {'collection': 'notifications'}
+
+    def get_serialized(self):
+        data = super().get_serialized()
+        data['sender'] = str(self.sender.id)
+        data['recipient'] = str(self.recipient.id)
+        data['shop'] = str(self.shop.id)
+        return data
+
+    @classmethod
+    def get_pending_requests_for_shop(cls, shop_id):
+        return cls.objects(shop=shop_id, type='access_request', status='pending')
+
+    @classmethod
+    def get_notifications_for_user(cls, user_id):
+        return cls.objects(recipient=user_id).order_by('-created_at')
